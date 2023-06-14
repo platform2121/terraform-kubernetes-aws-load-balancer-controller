@@ -466,7 +466,7 @@ locals {
     endpoint              = data.aws_eks_cluster.selected[0].endpoint
     token                 = data.aws_eks_cluster_auth.selected[0].token
   }
-  tpl = base64encode(templatefile("${path.module}/kubeconfig.yaml", tplkeys))
+  tpl = base64encode(templatefile("${path.module}/kubeconfig.yaml", local.tplkeys))
 }
 
 resource "null_resource" "supply_target_group_arns" {
