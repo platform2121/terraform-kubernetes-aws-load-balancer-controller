@@ -458,17 +458,22 @@ resource "helm_release" "alb_controller" {
 # The method used below for referencing external resources in a destroy
 # provisioner via triggers comes from
 # https://github.com/hashicorp/terraform/issues/23679#issuecomment-886020367
+
+locals {
+  tplkeys = {
+    name                  = data.aws_eks_cluster.selected[0].name
+    certificate_authority = data.aws_eks_cluster.selected[0].certificate_authority.0.data
+    endpoint              = data.aws_eks_cluster.selected[0].endpoint
+    token                 = data.aws_eks_cluster_auth.selected[0].token
+  }
+  tpl = base64encode(templatefile("${path.module}/kubeconfig.yaml", tplkeys))
+}
+
 resource "null_resource" "supply_target_group_arns" {
   count = (length(var.target_groups) > 0) ? length(var.target_groups) : 0
 
   triggers = {
-    kubeconfig = base64encode(templatefile("${path.module}/kubeconfig.yaml",
-      {
-        name                       = data.aws_eks_cluster.selected[0].name
-        certificate_authority_data = data.aws_eks_cluster.selected[0].certificate_authority.0.data
-        endpoint                   = data.aws_eks_cluster.selected[0].endpoint
-        token                      = data.aws_eks_cluster_auth.selected[0].token
-    }))
+    kubeconfig  = local.tpl
     cmd_create  = <<-EOF
       cat <<YAML | kubectl -n ${var.k8s_namespace} --kubeconfig <(echo $KUBECONFIG | base64 --decode) apply -f -
       apiVersion: elbv2.k8s.aws/v1beta1
